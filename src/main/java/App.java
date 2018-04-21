@@ -44,6 +44,10 @@ public class App {
     public static String dirOutPutModel = "E://data/storm/post2_model.txt";
     public static String dirTopicTable = "E://data/storm/topicTable.json";
 
+    private static TopologyBuilder topologyBuilder;
+    private static LocalCluster localCluster;
+    private static int round = 2;
+
     public static void main(String[] args) throws InterruptedException, IOException {
         //args are the given input keywords
         keywords = args;
@@ -111,6 +115,48 @@ public class App {
         }*/
         //Thread.sleep(5000);
 
+        System.out.println("I am continuing now");
+        topologyBuilder = new TopologyBuilder();
+        localCluster = new LocalCluster();
+        setUpStormTopology(keywords);
+
+        Thread.sleep(10000L);
+
+        localCluster.killTopology("Getting-Started-Topology");
+        localCluster.shutdown();
+
+        localCluster = null;
+        topologyBuilder = null;
+
+        System.out.println("I am stop");
+        /*
+        int count;
+        while(true){
+            Thread.sleep(1000L);  //1800000L
+            count = TrainModelBolt.getKeywordListSize();
+            System.out.println("count: "+count);
+            if(count>0&&(count%2==0)){
+                keywords = TrainModelBolt.getNewKeywords();
+                Thread.sleep(3000L);
+                localCluster.killTopology("Getting-Started-Topology");
+                localCluster.shutdown();
+
+                System.out.println("*************************Round "+round+"***********************************");
+                round++;
+                Thread.sleep(10000L);
+
+                topologyBuilder = new TopologyBuilder();
+                localCluster = new LocalCluster();
+                setUpStormTopology(keywords);
+            }
+
+        }*/
+
+
+
+    }
+
+    private static void setUpStormTopology(String[] keywords) {
         /**
          * set up Storm topology
          */
@@ -127,7 +173,6 @@ public class App {
         String TEMP_BOLT_ID = "temp bolt";
         String TEMP_BOLT_ID_2 = "temp bolt 2";*/
 
-        TopologyBuilder topologyBuilder = new TopologyBuilder();
         topologyBuilder.setSpout(SPOUT_ID,spout);
 
 
@@ -165,14 +210,8 @@ public class App {
         config.put("dirOutPutModel",dirOutPutModel);
         //config.setDebug(true);
         //config.setNumWorkers(1);
-        LocalCluster localCluster = new LocalCluster();
 
         localCluster.submitTopology("Getting-Started-Topology",config,topologyBuilder.createTopology());
-
-        Utils.sleep(30000L);  //1800000L
-        localCluster.killTopology("Getting-Started-Topology");
-        localCluster.shutdown();
-
     }
 
 

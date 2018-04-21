@@ -17,7 +17,6 @@ import org.deeplearning4j.text.tokenization.tokenizer.preprocessor.CommonPreproc
 import org.deeplearning4j.text.tokenization.tokenizerfactory.DefaultTokenizerFactory;
 import org.deeplearning4j.text.tokenization.tokenizerfactory.TokenizerFactory;
 
-import javax.rmi.CORBA.Util;
 import java.io.*;
 import java.util.*;
 
@@ -32,6 +31,7 @@ public class TrainModelBolt extends BaseRichBolt {
     private String dirOutPutModel;
     private List<String> stopList;
     private boolean flag = false;
+    public static List<String> newKeywords = new ArrayList<>();
 
     public TrainModelBolt(String[] keywords) {
         this.keywords = keywords;
@@ -74,13 +74,6 @@ public class TrainModelBolt extends BaseRichBolt {
             TokenizerFactory tFactory = new DefaultTokenizerFactory();
             tFactory.setTokenPreProcessor(new CommonPreprocessor());
 
-            //ocabCache<VocabWord> cache = new AbstractCache<>();
-        /*WeightLookupTable<VocabWord> table = new InMemoryLookupTable.Builder<VocabWord>()
-                .vectorLength(100)
-                .useAdaGrad(false)
-                .cache(cache).build();*/
-
-            //log.info("Building Model...");
             System.out.println("Building Model...");
             Word2Vec vec = new Word2Vec.Builder()
                     .minWordFrequency(5)
@@ -107,10 +100,10 @@ public class TrainModelBolt extends BaseRichBolt {
             //log.info("Searching the nearest words to the given keyword");
             for(String kw:keywords){
                 System.out.println("********"+"for "+kw+"********");
-                Collection<String> seeds = vec.wordsNearest(kw,10);
-                //vec.wordsNearest("melbourne",10);
-                //List<String> results = vec.similarWordsInVocabTo("melbourne",0.5);
+                List<String> seeds = (List<String>) vec.wordsNearest(kw,10);
+                this.newKeywords.add(seeds.get(0));
                 System.out.println(seeds);
+                System.out.println("new keyword list size: "+this.newKeywords.size());
                 for(String s:seeds){
                     double sim  = vec.similarity(s,kw);
                     System.out.println(s+"  "+sim);
@@ -140,5 +133,23 @@ public class TrainModelBolt extends BaseRichBolt {
             }
         }
         return this.stopList;
+    }
+
+    public static String[] getNewKeywords() {
+        String[] kws = new String[newKeywords.size()];
+        if(!newKeywords.isEmpty()){
+            for(int i=0;i<kws.length;i++){
+                kws[i] = newKeywords.get(i);
+            }
+        }
+        return kws;
+    }
+
+    public static void setNewKeywords(List<String> newKeywords) {
+        newKeywords = newKeywords;
+    }
+
+    public static int getKeywordListSize(){
+        return newKeywords.size();
     }
 }
