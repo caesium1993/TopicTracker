@@ -1,25 +1,14 @@
 package scheduledTask;
 
+import com.tumblr.jumblr.JumblrClient;
+import com.tumblr.jumblr.types.Blog;
+import com.tumblr.jumblr.types.User;
+
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
-import java.util.TimerTask;
 import java.util.concurrent.Callable;
-
-import com.tumblr.jumblr.JumblrClient;
-import com.tumblr.jumblr.types.AnswerPost;
-import com.tumblr.jumblr.types.AudioPost;
-import com.tumblr.jumblr.types.Blog;
-import com.tumblr.jumblr.types.ChatPost;
-import com.tumblr.jumblr.types.LinkPost;
-import com.tumblr.jumblr.types.PhotoPost;
-import com.tumblr.jumblr.types.Post;
-import com.tumblr.jumblr.types.QuotePost;
-import com.tumblr.jumblr.types.TextPost;
-import com.tumblr.jumblr.types.User;
-import com.tumblr.jumblr.types.VideoPost;
 
 /**
  * This class is to request Tumblr posts and their notes
