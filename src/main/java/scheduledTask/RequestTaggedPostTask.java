@@ -26,7 +26,8 @@ public class RequestTaggedPostTask implements Runnable{
     private HashSet<Long> taggedPosts = new HashSet<>();
 
     public String dir = "E://data/post_2.json";
-    public String idDir = "E://data/post_id.txt";
+    private String dirRawPosts = "E://data/storm/raw_posts.json";
+    public String dirId = "E://data/post_id.txt";
 
 
     private Gson gson = new GsonBuilder().create();
@@ -40,8 +41,29 @@ public class RequestTaggedPostTask implements Runnable{
         this.keywords = keywords;
     }
 
+    public  boolean cleanRawData(){
+        boolean flag1 = false;
+        boolean flag2 = false;
+        File rawFile = new File(dirRawPosts);
+        File idFile = new File(dirId);
+
+        if(rawFile.exists()){
+            flag1 = rawFile.delete();
+        }
+
+        if(idFile.exists()){
+            flag2 = idFile.delete();
+        }
+
+        if(flag1&&flag2){
+            return true;
+        } else{
+            return false;
+        }
+    }
+
     public void run() {
-        File idFile = new File(idDir);
+        File idFile = new File(dirId);
         /**
          * if it has queried before
          */
@@ -80,8 +102,8 @@ public class RequestTaggedPostTask implements Runnable{
             }
         }
         try {
-            FileWriter fw2 = new FileWriter(idDir,false);
-            fw2.write(idDir, this.taggedPosts);
+            FileWriter fw2 = new FileWriter(dirId,false);
+            fw2.write(dirId, this.taggedPosts);
             fw2.close();
         } catch (IOException e) {
             e.printStackTrace();

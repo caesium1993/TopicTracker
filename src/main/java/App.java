@@ -4,11 +4,16 @@ import org.apache.storm.LocalCluster;
 import org.apache.storm.topology.BoltDeclarer;
 import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.utils.Utils;
+import scheduledTask.RequestBlogNameTask;
+import scheduledTask.RequestPostTask;
+import scheduledTask.RequestTaggedPostTask;
 import spout.TumblrSpout;
 import type.TumblrPost;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Hashtable;
+import java.util.concurrent.*;
 
 
 public class App {
@@ -37,11 +42,11 @@ public class App {
     public static Hashtable<Long, TumblrPost> posts = new Hashtable<>();
     public static String[] keywords = null;
 
-    public static String dirRawPost ="E://data/post_2.json";
-    public static String dirText4Model = "E://data/storm/text_model.txt";
-    public static String dirCandiPost = "E://data/storm/candidate_post.json";
+    public static String dirRawPost ="E://data/storm/raw_posts.json";
+    //public static String dirText4Model = "E://data/storm/text_model.txt";
+    //public static String dirCandiPost = "E://data/storm/candidate_post.json";
     public static String dirStopWords = "E://data/stopList.txt";
-    public static String dirOutPutModel = "E://data/storm/post2_model.txt";
+    //public static String dirOutPutModel = "E://data/storm/post2_model.txt";
     public static String dirTopicTable = "E://data/storm/topicTable.json";
 
     private static TopologyBuilder topologyBuilder;
@@ -52,29 +57,38 @@ public class App {
         //args are the given input keywords
         keywords = args;
 
-        /*ArrayList<String> followingBlogs = new ArrayList<>();
+        /**
+         * begin the regular query  (tagged and following blogs)
+         */
+        System.out.println("now we have "+keywords.length+" keywords");
 
-        ScheduledExecutorService pool = Executors.newScheduledThreadPool(1);
+        ArrayList<String> followingBlogs = new ArrayList<>();
 
+        ScheduledExecutorService pool = Executors.newScheduledThreadPool(5);
+
+        /**
+         * request the blog names of all my followings
+         */
         RequestBlogNameTask blogNameTask = new RequestBlogNameTask(CONSUMER_KEY,CONSUMER_SECRET,ACCESS_TOKEN,
                 TOKEN_SECRET);
         ScheduledFuture<ArrayList<String>> future = pool.schedule(blogNameTask, 1L, TimeUnit.MILLISECONDS);
-        boolean flag = false;*/
+        boolean flag4BlogNameTask = false;
+
         /**
-         * request posts by given keywords using tagged method
+         * periodic request posts by given keywords using tagged method
          */
-        /*RequestTaggedPostTask taggedPostTask = new RequestTaggedPostTask(CONSUMER_KEY,CONSUMER_SECRET,ACCESS_TOKEN,
+        RequestTaggedPostTask taggedPostTask = new RequestTaggedPostTask(CONSUMER_KEY,CONSUMER_SECRET,ACCESS_TOKEN,
                 TOKEN_SECRET, keywords);
-        Hashtable<Long, TumblrPost> taggedResult = taggedPostTask.requestByTag();
-        if(taggedResult!=null){
-            posts.putAll(taggedResult);
-        }*/
+        long tagDelay = 20;
+        pool.scheduleWithFixedDelay(taggedPostTask, 0, tagDelay, TimeUnit.MINUTES);
 
-
-        /*while(flag==false){
+        /**
+         * get the list of all following blogs
+         */
+        while(flag4BlogNameTask==false){
             Thread.sleep(500L);
             if(future.isDone()){
-                flag= true;
+                flag4BlogNameTask= true;
                 try {
                     followingBlogs=future.get();
                     //System.out.println("following blogs size: "+followingBlogs.size());
@@ -84,36 +98,34 @@ public class App {
                     e.printStackTrace();
                 }
             }
-        }*/
+        }
 
         /*int j=1;
         for(String i:followingBlogs){
             System.out.println("["+j+"]"+i);
             j++;
         }*/
-
-        /*RequestPostTask getPostTask = new RequestPostTask(CONSUMER_KEY,CONSUMER_SECRET,ACCESS_TOKEN,
-                TOKEN_SECRET,followingBlogs,posts);
+        /**
+         * request post by blogPost method
+         */
+        RequestPostTask getPostTask = new RequestPostTask(CONSUMER_KEY,CONSUMER_SECRET,ACCESS_TOKEN,
+                TOKEN_SECRET,followingBlogs,keywords);
         dirRawPost = getPostTask.getDir();
-        long delay = 1000*120;
-        ScheduledFuture<?> scheduledFuture = pool.scheduleWithFixedDelay(getPostTask, 10, delay,
-                TimeUnit.MILLISECONDS);
+        long delay = 5;
+        pool.scheduleWithFixedDelay(getPostTask, 0, delay, TimeUnit.HOURS);
 
-        boolean flag2 = false;
-        while(!flag2){
-            Thread.sleep(3000);
-            if(scheduledFuture.isDone()){
-                flag2=true;
-            }
-        }*/
-        /*pool.scheduleWithFixedDelay(getPostTask,10L, delay,
-                TimeUnit.MILLISECONDS);*/
+        /**
+         * set up apache storm
+         */
+        //initialize spout and bolts
+        //set and submit topology
 
-        /*while(true){
-            Thread.sleep(15000L);
-            System.out.println("this is main posts list: "+posts.size());
-        }*/
-        //Thread.sleep(5000);
+        /**
+         * loop: while keywords size changed and DBBlot flag changed, begin a new iteration
+         * new iteration: set new keywords to query tasks
+         *                set new keywords to spout and bolts
+         *                set BDbolt flag to false
+         */
 
         System.out.println("I am continuing now");
         topologyBuilder = new TopologyBuilder();
@@ -156,11 +168,21 @@ public class App {
 
     }
 
+    /**
+     * this method regularly query the Tumblr posts for the given keywords using tagged method
+     * and blogPost method in order to simulate streaming harvest.
+     * @param keywords
+     * @throws InterruptedException
+     */
+    private static void beginQuery(String[] keywords){
+    }
+
+    /**
+     * set up storm topology
+     * @param keywords
+     */
     private static void setUpStormTopology(String[] keywords) {
-        /**
-         * set up Storm topology
-         */
-        TumblrSpout spout = new TumblrSpout(keywords);
+        TumblrSpout spout = new TumblrSpout();
         FilterBolt filterBolt = new FilterBolt(keywords);
         RecordBolt recordBolt = new RecordBolt();
         TrainModelBolt trainModelBolt = new TrainModelBolt(keywords);
@@ -203,11 +225,11 @@ public class App {
 
         Config config = new Config();
         config.put("dir", dirRawPost);
-        config.put("dirText4Model",dirText4Model);
-        config.put("dirCandiPost",dirCandiPost);
+        //config.put("dirText4Model",dirText4Model);
+        //config.put("dirCandiPost",dirCandiPost);
         config.put("dirTopicTable",dirTopicTable);
         config.put("dirStopWords",dirStopWords);
-        config.put("dirOutPutModel",dirOutPutModel);
+        //config.put("dirOutPutModel",dirOutPutModel);
         //config.setDebug(true);
         //config.setNumWorkers(1);
 

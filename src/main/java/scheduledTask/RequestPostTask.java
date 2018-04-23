@@ -7,10 +7,7 @@ import org.apache.commons.lang3.StringUtils;
 import type.TumblrPost;
 import utils.FileWriter;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.util.*;
 
 public class RequestPostTask implements Runnable {
@@ -20,12 +17,14 @@ public class RequestPostTask implements Runnable {
     private String access_token;
     private String token_secret;
     public ArrayList<String> blogLists;
+    public String[] keywords;
 
-    public String dir = "E://data/post_2.json";
-    private String idDir = "E://data/post_id.txt";
+    private String dir = "E://data/post_2.json";
+    private String dirRawPosts = "E://data/storm/raw_posts.json";
+    private String dirId = "E://data/storm/post_id.txt";
 
     public String getDir() {
-        return dir;
+        return dirRawPosts;
     }
 
     public void setDir(String dir) {
@@ -36,17 +35,39 @@ public class RequestPostTask implements Runnable {
     private Gson gson = new Gson();
 
     public RequestPostTask(String consumer_key, String consumer_secret, String access_token, String token_secret,
-                           ArrayList<String> blogLists) {
+                           ArrayList<String> blogLists, String[] keywords) throws FileNotFoundException {
         this.consumer_key = consumer_key;
         this.consumer_secret = consumer_secret;
         this.access_token = access_token;
         this.token_secret = token_secret;
         this.blogLists = blogLists;
+        this.keywords = keywords;
+    }
+
+    public  boolean cleanRawData(){
+        boolean flag1 = false;
+        boolean flag2 = false;
+        File rawFile = new File(dirRawPosts);
+        File idFile = new File(dirId);
+
+        if(rawFile.exists()){
+            flag1 = rawFile.delete();
+        }
+
+        if(idFile.exists()){
+            flag2 = idFile.delete();
+        }
+
+        if(flag1&&flag2){
+            return true;
+        } else{
+            return false;
+        }
     }
 
     @Override
     public void run() {
-        File idFile = new File(idDir);
+        File idFile = new File(dirId);
         /**
          * if it has queried before
          */
@@ -64,7 +85,7 @@ public class RequestPostTask implements Runnable {
             }
         }
         /**
-         * not first time
+         * first time
          */
 
         JumblrClient client = new JumblrClient(this.consumer_key, this.consumer_secret, this.access_token,
@@ -84,8 +105,9 @@ public class RequestPostTask implements Runnable {
         for(String blogName:this.blogLists){
             System.out.println("Round"+i+"this is for "+blogName+" The size is "+this.posts.size());
             try {
-                FileWriter fw = new FileWriter(dir);
-                this.posts = getPostsForGivenBlogs(client.blogPosts(blogName, param), this.posts, fw);
+                FileWriter fw = new FileWriter(dir); // just for pre-modelling!!!!!!!
+                FileWriter fw1 = new FileWriter(dirRawPosts); // FileWriter for npl
+                this.posts = getPostsForGivenBlogs(client.blogPosts(blogName, param), this.posts, fw, fw1);
                 fw.close();
             } catch (IOException e) {
                 e.printStackTrace();
@@ -94,8 +116,8 @@ public class RequestPostTask implements Runnable {
         }
 
         try {
-            FileWriter fw2 = new FileWriter(idDir, false);
-            fw2.write(idDir,this.posts);
+            FileWriter fw2 = new FileWriter(dirId, false);
+            fw2.write(dirId,this.posts);
             fw2.close();
         } catch (IOException e) {
             e.printStackTrace();
@@ -103,12 +125,13 @@ public class RequestPostTask implements Runnable {
 
     }
 
+
     /**
      * get the details of the posts in the given format
      * @param returnedPosts
      */
     public HashSet<Long> getPostsForGivenBlogs(List<Post> returnedPosts, HashSet<Long> posts,
-                                               FileWriter fw) throws IOException {
+                                               FileWriter fw, FileWriter fw1) throws IOException {
         // TODO Auto-generated method stub
         for (Post item : returnedPosts) {
             if (posts.add(item.getId())) {
@@ -120,10 +143,15 @@ public class RequestPostTask implements Runnable {
                             String text = tPost.getTitle().trim().replaceAll("[\r\n]+", "") + " "
                                     + tPost.getBody().trim().replaceAll("[\r\n]+", "");
                             List<String> tags = item.getTags();
+
                             //Long id, String type, String text, String date, String blog_name, List<String> tags
                             TumblrPost p = new TumblrPost(item.getId(), item.getType(), text.trim(), item.getDateGMT(),
                                     item.getBlogName(), tags);
                             fw.writeSingleLine(gson.toJson(p));
+                            /***********************************/
+                            if(filterPost(text, tags)){
+                                fw1.writeSingleLine(gson.toJson(p));
+                            }
                             System.out.println(text);
                         }
 
@@ -239,6 +267,19 @@ public class RequestPostTask implements Runnable {
 
         }
         return posts;
+    }
+
+    private boolean filterPost(String text, List<String> tags) {
+        boolean flag = false;
+        for(String kw:keywords){
+            kw = kw.replaceAll("_", " ");
+            if(text.toLowerCase().contains(kw)||tags.contains(kw)){
+                flag = true;
+                break;
+            }
+        }
+        return flag;
+
     }
 
 
