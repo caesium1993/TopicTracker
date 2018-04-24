@@ -17,15 +17,15 @@ import java.util.Map;
 public class TumblrSpout extends BaseRichSpout {
     private SpoutOutputCollector collector;
 
-    private boolean flag = false;
+    //private boolean flag = false;
     private FileReader fileReader;
     private BufferedReader bufferedReader;
-    //private int index=0;
+    private int round = 0;
 
     public void open(Map map, TopologyContext topologyContext, SpoutOutputCollector spoutOutputCollector) {
         this.collector = spoutOutputCollector;
         try {
-            this.fileReader = new FileReader(map.get("dir").toString());
+            this.fileReader = new FileReader(map.get("dirRawPost").toString());
             this.bufferedReader = new BufferedReader(fileReader);
         } catch (FileNotFoundException e) {
             e.printStackTrace();
@@ -33,18 +33,12 @@ public class TumblrSpout extends BaseRichSpout {
     }
 
     public void nextTuple() {
-        if(flag){
-            Utils.sleep(1000);
-            return;
-        }
         String str;
         try {
             if(StringUtils.isNotBlank((str = bufferedReader.readLine()))){
                     this.collector.emit(new Values(str));
             } else{
-                    flag = true;
-                    this.bufferedReader.close();
-                    this.collector.emit(new Values("finished"));
+                    Utils.sleep(3000L);
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -54,5 +48,9 @@ public class TumblrSpout extends BaseRichSpout {
 
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
         outputFieldsDeclarer.declare(new Fields("raw posts"));
+    }
+
+    public void setRound(int round) {
+        this.round = round;
     }
 }

@@ -21,7 +21,7 @@ public class RequestPostTask implements Runnable {
 
     private String dir = "E://data/post_2.json";
     private String dirRawPosts = "E://data/storm/raw_posts.json";
-    private String dirId = "E://data/storm/post_id.txt";
+    private String dirId = "E://data/post_id.txt";
 
     public String getDir() {
         return dirRawPosts;
@@ -46,7 +46,7 @@ public class RequestPostTask implements Runnable {
 
     public  boolean cleanRawData(){
         boolean flag1 = false;
-        boolean flag2 = false;
+        //boolean flag2 = false;
         File rawFile = new File(dirRawPosts);
         File idFile = new File(dirId);
 
@@ -54,11 +54,11 @@ public class RequestPostTask implements Runnable {
             flag1 = rawFile.delete();
         }
 
-        if(idFile.exists()){
+        /*if(idFile.exists()){
             flag2 = idFile.delete();
-        }
+        }*/
 
-        if(flag1&&flag2){
+        if(flag1){
             return true;
         } else{
             return false;
@@ -67,6 +67,8 @@ public class RequestPostTask implements Runnable {
 
     @Override
     public void run() {
+        System.out.println(showKeywords());
+
         File idFile = new File(dirId);
         /**
          * if it has queried before
@@ -108,6 +110,7 @@ public class RequestPostTask implements Runnable {
                 FileWriter fw = new FileWriter(dir); // just for pre-modelling!!!!!!!
                 FileWriter fw1 = new FileWriter(dirRawPosts); // FileWriter for npl
                 this.posts = getPostsForGivenBlogs(client.blogPosts(blogName, param), this.posts, fw, fw1);
+                fw1.close();
                 fw.close();
             } catch (IOException e) {
                 e.printStackTrace();
@@ -148,7 +151,7 @@ public class RequestPostTask implements Runnable {
                             TumblrPost p = new TumblrPost(item.getId(), item.getType(), text.trim(), item.getDateGMT(),
                                     item.getBlogName(), tags);
                             fw.writeSingleLine(gson.toJson(p));
-                            /***********************************/
+                            /**********if the post contains any given keyword**********/
                             if(filterPost(text, tags)){
                                 fw1.writeSingleLine(gson.toJson(p));
                             }
@@ -167,6 +170,9 @@ public class RequestPostTask implements Runnable {
                             TumblrPost p1 = new TumblrPost(item.getId(), item.getType(), text1, item.getDateGMT(),
                                     item.getBlogName(), tags1);
                             fw.writeSingleLine(gson.toJson(p1));
+                            if(filterPost(text1, tags1)){
+                                fw1.writeSingleLine(gson.toJson(p1));
+                            }
                             System.out.println(text1);
                         }
                         //System.out.println("["+i+"]"+pPost.getBlogName()+": "+pPost.getCaption().trim());
@@ -182,6 +188,9 @@ public class RequestPostTask implements Runnable {
                             TumblrPost p2 = new TumblrPost(item.getId(), item.getType(), text2.trim(), item.getDateGMT(),
                                     item.getBlogName(), tags2);
                             fw.writeSingleLine(gson.toJson(p2));
+                            if(filterPost(text2, tags2)){
+                                fw1.writeSingleLine(gson.toJson(p2));
+                            }
                             System.out.println(text2);
                         }
                         //System.out.println("["+i+"]"+qPost.getBlogName()+": "+qPost.getText().trim()+" Source: "+qPost.getSource());
@@ -197,6 +206,9 @@ public class RequestPostTask implements Runnable {
                             TumblrPost p3 = new TumblrPost(item.getId(), item.getType(), text3.trim(), item.getDateGMT(),
                                     item.getBlogName(), tags3);
                             fw.writeSingleLine(gson.toJson(p3));
+                            if(filterPost(text3, tags3)){
+                                fw1.writeSingleLine(gson.toJson(p3));
+                            }
                             System.out.println(text3);
                         }
                         //System.out.println("["+i+"]"+lPost.getBlogName()+": "+lPost.getTitle()+ "Description: "+lPost.getDescription().trim());
@@ -212,6 +224,9 @@ public class RequestPostTask implements Runnable {
                             TumblrPost p4 = new TumblrPost(item.getId(), item.getType(), text4.trim(), item.getDateGMT(),
                                     item.getBlogName(), tags4);
                             fw.writeSingleLine(gson.toJson(p4));
+                            if(filterPost(text4, tags4)){
+                                fw1.writeSingleLine(gson.toJson(p4));
+                            }
                             System.out.println(text4);
                         }
                         //System.out.println("["+i+"]"+cPost.getBlogName()+": "+cPost.getBody().trim());
@@ -226,6 +241,9 @@ public class RequestPostTask implements Runnable {
                             TumblrPost p5 = new TumblrPost(item.getId(), item.getType(), text5.trim(), item.getDateGMT(),
                                     item.getBlogName(), tags5);
                             fw.writeSingleLine(gson.toJson(p5));
+                            if(filterPost(text5, tags5)){
+                                fw1.writeSingleLine(gson.toJson(p5));
+                            }
                             System.out.println(text5);
                         }
                         //System.out.println("["+i+"]"+aPost.getBlogName()+": "+aPost.getAlbumName()+"-"+aPost.getArtistName()
@@ -241,6 +259,9 @@ public class RequestPostTask implements Runnable {
                             TumblrPost p6 = new TumblrPost(item.getId(), item.getType(), text6, item.getDateGMT(),
                                     item.getBlogName(), tags6);
                             fw.writeSingleLine(gson.toJson(p6));
+                            if(filterPost(text6, tags6)){
+                                fw1.writeSingleLine(gson.toJson(p6));
+                            }
                             System.out.println(text6);
                         }
                         //System.out.println("["+i+"]"+vPost.getBlogName()+": "+vPost.getCaption().trim());
@@ -255,6 +276,9 @@ public class RequestPostTask implements Runnable {
                             TumblrPost p7 = new TumblrPost(item.getId(), item.getType(), text7.trim(), item.getDateGMT(),
                                     item.getBlogName(), tags7);
                             fw.writeSingleLine(gson.toJson(p7));
+                            if(filterPost(text7, tags7)){
+                                fw1.writeSingleLine(gson.toJson(p7));
+                            }
                             System.out.println(text7);
                         }
                         //System.out.println("["+i+"]"+ansPost.getBlogName()+": "+ansPost.getQuestion().trim()+"Answer: "+ansPost.getAnswer().trim());
@@ -273,14 +297,30 @@ public class RequestPostTask implements Runnable {
         boolean flag = false;
         for(String kw:keywords){
             kw = kw.replaceAll("_", " ");
-            if(text.toLowerCase().contains(kw)||tags.contains(kw)){
-                flag = true;
-                break;
+            if(!tags.isEmpty()){
+                if(text.toLowerCase().contains(kw)||tags.contains(kw)){
+                    flag = true;
+                    break;
+                }
+            } else {
+                if(text.toLowerCase().contains(kw)){
+                    flag = true;
+                    break;
+                }
             }
+
         }
         return flag;
 
     }
 
+    public void setKeywords(String[] keywords) {
+        this.keywords = keywords;
+    }
 
+    public String showKeywords() {
+        return "RequestPostTask{" +
+                "keywords=" + Arrays.toString(this.keywords) +
+                '}';
+    }
 }
