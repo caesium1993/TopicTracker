@@ -20,10 +20,12 @@ public class TumblrSpout extends BaseRichSpout {
     //private boolean flag = false;
     private FileReader fileReader;
     private BufferedReader bufferedReader;
-    private int round = 0;
+    private static int round = 0;
+    private int tem;
 
     public void open(Map map, TopologyContext topologyContext, SpoutOutputCollector spoutOutputCollector) {
         this.collector = spoutOutputCollector;
+        this.tem = round;
         try {
             this.fileReader = new FileReader(map.get("dirRawPost").toString());
             this.bufferedReader = new BufferedReader(fileReader);
@@ -33,6 +35,16 @@ public class TumblrSpout extends BaseRichSpout {
     }
 
     public void nextTuple() {
+        System.out.println("Spout Round: "+round);
+
+        /**
+         * first check round num, if begin a new round, wait 5 seconds
+         */
+        if(this.round>this.tem){
+            this.tem=this.round;
+            Utils.sleep(3000L);
+            return;
+        }
         String str;
         try {
             if(StringUtils.isNotBlank((str = bufferedReader.readLine()))){

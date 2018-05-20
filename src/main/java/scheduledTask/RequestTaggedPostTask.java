@@ -19,12 +19,12 @@ public class RequestTaggedPostTask implements Runnable{
     private String consumer_secret;
     private String access_token;
     private String token_secret;
-    private String[] keywords;
+    private static String[] keywords;
     private HashSet<Long> taggedPosts = new HashSet<>();
 
-    private String dir = "E://data/post_2.json";
+    private String dir = "E://data/storm/tem_post.json";
     private String dirRawPosts = "E://data/storm/raw_posts.json";
-    private String dirId = "E://data/post_id.txt";
+    private String dirId = "E://data/storm/post_id.txt";
 
 
     private Gson gson = new GsonBuilder().create();

@@ -10,6 +10,7 @@ import spout.TumblrSpout;
 import type.TumblrPost;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Hashtable;
 import java.util.concurrent.*;
 
@@ -41,11 +42,8 @@ public class App {
     public static String[] keywords = null;
 
     public static String dirRawPost ="E://data/storm/raw_posts.json";
-    //public static String dirText4Model = "E://data/storm/text_model.txt";
-    //public static String dirCandiPost = "E://data/storm/candidate_post.json";
-    public static String dirStopWords = "E://data/stopList.txt";
-    //public static String dirOutPutModel = "E://data/storm/post2_model.txt";
-    public static String dirTopicTable = "E://data/storm/topicTable.json";
+    private static String dirInputModel = "E://data/storm/pre_model_18_05_2018.txt";
+    //private static String dirInputModel = "E://data/storm/pre_model_29_04_2018.txt";
 
     private static TopologyBuilder topologyBuilder;
     private static LocalCluster localCluster;
@@ -53,7 +51,7 @@ public class App {
 
     public static void main(String[] args) throws InterruptedException, IOException {
         //args are the given input keywords
-        keywords = args;
+        keywords = toLowCase(args);
 
         /**
          * begin the regular query  (tagged and following blogs)
@@ -78,13 +76,13 @@ public class App {
         RequestTaggedPostTask taggedPostTask = new RequestTaggedPostTask(CONSUMER_KEY,CONSUMER_SECRET,ACCESS_TOKEN,
                 TOKEN_SECRET, keywords);
         taggedPostTask.cleanRawData();
-        long tagDelay = 1;
+        long tagDelay = 5;
         pool.scheduleWithFixedDelay(taggedPostTask, 0, tagDelay, TimeUnit.MINUTES);
 
         /**
          * get the list of all following blogs
          */
-        while(flag4BlogNameTask==false){
+       while(flag4BlogNameTask==false){
             Thread.sleep(500);
             if(future.isDone()){
                 flag4BlogNameTask= true;
@@ -110,26 +108,26 @@ public class App {
         RequestPostTask getPostTask = new RequestPostTask(CONSUMER_KEY,CONSUMER_SECRET,ACCESS_TOKEN,
                 TOKEN_SECRET,followingBlogs,keywords);
         dirRawPost = getPostTask.getDir();
-        long delay = 5;
+        long delay = 2;
         pool.scheduleWithFixedDelay(getPostTask, 0, delay, TimeUnit.HOURS);
 
-        Thread.sleep(3000L);
+        Thread.sleep(1000L);
 
         /**
          * set up apache storm
          */
         //initialize spout and bolts
         //set and submit topology
-        /*System.out.println("I am continuing now");
+        System.out.println("I am continuing now");
         topologyBuilder = new TopologyBuilder();
         localCluster = new LocalCluster();
 
         TumblrSpout spout = new TumblrSpout();
         FilterBolt filterBolt = new FilterBolt(keywords);
-        RecordBolt recordBolt = new RecordBolt();
+        //RecordBolt recordBolt = new RecordBolt();
         TrainModelBolt trainModelBolt = new TrainModelBolt(keywords);
         DeciderBolt deciderBolt = new DeciderBolt(keywords);
-        DBBolt dbBolt = new DBBolt();
+        DBBolt dbBolt = new DBBolt(keywords);
 
         //bolt for testing
         /*TempBolt tempBolt = new TempBolt();
@@ -137,43 +135,40 @@ public class App {
         String TEMP_BOLT_ID = "temp bolt";
         String TEMP_BOLT_ID_2 = "temp bolt 2";*/
 
-        /*topologyBuilder.setSpout(SPOUT_ID,spout);
+        topologyBuilder.setSpout(SPOUT_ID,spout);
 
 
         topologyBuilder.setBolt(FILTER_BOLT_ID, filterBolt,3).shuffleGrouping(SPOUT_ID);
 
         String allMatchStream = filterBolt.ALL_MATCH_STREAM;
         String someMatchStream = filterBolt.SOME_MATCH_STREAM;
-        BoltDeclarer bdRecordBolt = topologyBuilder.setBolt(RECORD_BOLT_ID, recordBolt);
-        bdRecordBolt.allGrouping(FILTER_BOLT_ID,allMatchStream);
-        bdRecordBolt.allGrouping(FILTER_BOLT_ID,someMatchStream);
-
-        String allTextSent = recordBolt.ALL_TEXT_SENT;
-        String positiveStream = recordBolt.POSITIVE_STREAM;
-        //topologyBuilder.setBolt(TEMP_BOLT_ID,tempBolt,1).globalGrouping(RECORD_BOLT_ID,positiveStream);
-        //topologyBuilder.setBolt(TEMP_BOLT_ID_2,tempBolt2,1).globalGrouping(RECORD_BOLT_ID,allTextSent);
-        topologyBuilder.setBolt(MODEL_BOLT_ID, trainModelBolt).globalGrouping(RECORD_BOLT_ID, allTextSent);
+        BoltDeclarer bdTempBolt = topologyBuilder.setBolt(MODEL_BOLT_ID, trainModelBolt);
+        bdTempBolt.allGrouping(FILTER_BOLT_ID,allMatchStream);
+        bdTempBolt.allGrouping(FILTER_BOLT_ID,someMatchStream);
 
         String seedStream = trainModelBolt.SEED_STREAM_ID;
-        BoltDeclarer deciderBoltDeclarer = topologyBuilder.setBolt(DECIDER_BOLT_ID, deciderBolt,3);
+
+
+        BoltDeclarer deciderBoltDeclarer = topologyBuilder.setBolt(DECIDER_BOLT_ID, deciderBolt);
         deciderBoltDeclarer.allGrouping(FILTER_BOLT_ID,someMatchStream);
         deciderBoltDeclarer.allGrouping(MODEL_BOLT_ID,seedStream);
 
 
-        BoltDeclarer dbBoltDeclarer = topologyBuilder.setBolt(DB_BOLT_ID, dbBolt);
+        String onTopicStream = deciderBolt.ON_TOPIC_STREAM;
+        String offTopicStream = deciderBolt.OFF_TOPIC_STREAM;
+        BoltDeclarer dbBoltDeclarer = topologyBuilder.setBolt(DB_BOLT_ID,dbBolt);
+        dbBoltDeclarer.allGrouping(FILTER_BOLT_ID, allMatchStream);
+        dbBoltDeclarer.allGrouping(DECIDER_BOLT_ID, onTopicStream);
+        dbBoltDeclarer.allGrouping(DECIDER_BOLT_ID, offTopicStream);
+        /*BoltDeclarer dbBoltDeclarer = topologyBuilder.setBolt(DB_BOLT_ID, dbBolt);
         String onTopicStream = deciderBolt.ON_TOPIC_STREAM;
         dbBoltDeclarer.allGrouping(RECORD_BOLT_ID, positiveStream);
-        dbBoltDeclarer.allGrouping(DECIDER_BOLT_ID,onTopicStream);
+        dbBoltDeclarer.allGrouping(DECIDER_BOLT_ID,onTopicStream);*/
 
         Config config = new Config();
         config.put("dirRawPost", dirRawPost);
-        //config.put("dirText4Model",dirText4Model);
-        //config.put("dirCandiPost",dirCandiPost);
-        config.put("dirTopicTable",dirTopicTable);
-        config.put("dirStopWords",dirStopWords);
-        //config.put("dirOutPutModel",dirOutPutModel);
-        //config.setDebug(true);
-        //config.setNumWorkers(1);
+        config.put("dirInputModel",dirInputModel);
+
 
         localCluster.submitTopology("Getting-Started-Topology",config,topologyBuilder.createTopology());
 
@@ -183,47 +178,57 @@ public class App {
          *                set new keywords to spout and bolts
          *                set BDbolt flag to false
          */
-        String[] test = {"au","american","america","trump","usa politics","usa news"};
-        while(true){
-            Thread.sleep(120000L);
-            keywords = new String[]{test[round], test[round + 1]};
-
-            taggedPostTask.setKeywords(keywords);
-            getPostTask.setKeywords(keywords);
-            round++;
+        //String[] test = {"au","american","america","trump","usa politics","usa news"};
+        int t = 3;
+        //System.out.println("test 1");
+        while(round<4){
+            Thread.sleep(1000L);
+            //System.out.println("test 2");
+            int mark = trainModelBolt.getRound();
+            if(mark>round) {
+                keywords = trainModelBolt.getKeywords();
+                System.out.println("This is main: " + Arrays.asList(keywords));
+                Thread.sleep(7000L);
+                taggedPostTask.setKeywords(keywords);
+                getPostTask.setKeywords(keywords);
+                round++;
+                spout.setRound(round);
+                filterBolt.setKeywords(keywords);
+                trainModelBolt.setFlag(false);
+                deciderBolt.setKeywords(keywords);
+                dbBolt.setKeywords(keywords);
+                dbBolt.setRound(round);
+                //decider
+                //dbBolt
+            }
         }
-
-        /*Thread.sleep(300000L);
 
         localCluster.killTopology("Getting-Started-Topology");
         localCluster.shutdown();
 
-        System.out.println("I am stop");
-        /*
-        int count;
-        while(true){
-            Thread.sleep(1000L);  //1800000L
-            count = TrainModelBolt.getKeywordListSize();
-            System.out.println("count: "+count);
-            if(count>0&&(count%2==0)){
-                keywords = TrainModelBolt.getNewKeywords();
-                Thread.sleep(3000L);
-                localCluster.killTopology("Getting-Started-Topology");
-                localCluster.shutdown();
-
-                System.out.println("*************************Round "+round+"***********************************");
-                round++;
-                Thread.sleep(10000L);
-
-                topologyBuilder = new TopologyBuilder();
-                localCluster = new LocalCluster();
-                setUpStormTopology(keywords);
-            }
-
-        }*/
 
 
+    }
 
+    private static String[] addNewKW(String[] keywords, String s, String s1, String s2) {
+        String[] res = new String[keywords.length+3];
+        for(int i=0;i<keywords.length;i++){
+            res[i]=keywords[i];
+        }
+        int j = keywords.length;
+        res[j] = s;
+        res[j+1] = s1;
+        res[j+2] = s2;
+
+        return res;
+    }
+
+    private static String[] toLowCase(String[] args) {
+        for(int i=0;i<args.length;i++){
+            args[i] = args[i].toLowerCase().trim();
+        }
+
+        return args;
     }
 
     /**
