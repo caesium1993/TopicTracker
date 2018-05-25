@@ -1,0 +1,4 @@
+worker-id: 101da1a4-3d60-44bc-b036-3493ee5bd6c9
+logs.users: []
+logs.groups: []
+topology.submitter.user: caesium

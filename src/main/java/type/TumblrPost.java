@@ -1,5 +1,6 @@
 package type;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -10,6 +11,7 @@ public class TumblrPost {
     public String date;
     public String blog_name;
     public List<String> tags;
+    public List<String> match = new ArrayList<>();
 
     public TumblrPost(Long id, String type, String text, String date, String blog_name, List<String> tags) {
         this.id = id;
@@ -21,6 +23,14 @@ public class TumblrPost {
     }
 
     public TumblrPost() {
+    }
+
+    public List<String> getMatch() {
+        return match;
+    }
+
+    public void setMatch(List<String> match) {
+        this.match = match;
     }
 
     public Long getId() {

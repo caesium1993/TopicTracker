@@ -12,27 +12,25 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class RequestTaggedPostTask implements Runnable{
     private String consumer_key;
     private String consumer_secret;
     private String access_token;
     private String token_secret;
-    private String[] keywords;
+    private static String[] keywords;
     private HashSet<Long> taggedPosts = new HashSet<>();
 
-    public String dir = "E://data/post_2.json";
-    public String idDir = "E://data/post_id.txt";
+    //private String dir = "data/tem_post.json";
+    private String dirRawPosts = "data/raw_posts.json";
+    private String dirId = "data/post_id.txt";
 
 
     private Gson gson = new GsonBuilder().create();
 
     public RequestTaggedPostTask(String consumer_key, String consumer_secret, String access_token,
-                                 String token_secret, String[] keywords){
+                                 String token_secret, String[] keywords) {
         this.consumer_key = consumer_key;
         this.consumer_secret = consumer_secret;
         this.access_token = access_token;
@@ -40,8 +38,35 @@ public class RequestTaggedPostTask implements Runnable{
         this.keywords = keywords;
     }
 
+    public void cleanRawData(){
+        boolean flag1 = false;  //for raw posts file
+        boolean flag2 = false;  //for id file
+        File rawFile = new File(dirRawPosts);
+        File idFile = new File(dirId);
+
+        while(!flag1){
+            if(rawFile.exists()){
+                flag1 = rawFile.delete();
+            }else{
+                break;
+            }
+        }
+
+        while(!flag2){
+            if(idFile.exists()){
+                flag2 = idFile.delete();
+            }else{
+                break;
+            }
+        }
+
+
+    }
+
     public void run() {
-        File idFile = new File(idDir);
+        System.out.println(showKeywords());
+
+        File idFile = new File(dirId);
         /**
          * if it has queried before
          */
@@ -72,21 +97,23 @@ public class RequestTaggedPostTask implements Runnable{
             kw.replaceAll("_"," ");
             List<Post> result = client.tagged(kw, param);
             try {
-                FileWriter fw = new FileWriter(dir);
-                this.taggedPosts.addAll(getPostsForGivenBlogs(result, this.taggedPosts, fw));
-                fw.close();
+                //FileWriter fw = new FileWriter(dir);
+                FileWriter fw1 = new FileWriter(dirRawPosts);
+                this.taggedPosts.addAll(getPostsForGivenBlogs(result, this.taggedPosts, fw1));
+                fw1.close();
+                //fw.close();
             } catch (IOException e) {
                 e.printStackTrace();
             }
+
         }
         try {
-            FileWriter fw2 = new FileWriter(idDir,false);
-            fw2.write(idDir, this.taggedPosts);
+            FileWriter fw2 = new FileWriter(dirId,false);
+            fw2.write(dirId, this.taggedPosts);
             fw2.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
-
     }
 
     /**
@@ -94,7 +121,7 @@ public class RequestTaggedPostTask implements Runnable{
      * @param returnedPosts
      */
     public HashSet<Long> getPostsForGivenBlogs(List<Post> returnedPosts, HashSet<Long> posts,
-                                               FileWriter fw) throws IOException {
+                                               FileWriter fw1) throws IOException {
         // TODO Auto-generated method stub
         for (Post item : returnedPosts) {
             if (posts.add(item.getId())) {
@@ -109,8 +136,13 @@ public class RequestTaggedPostTask implements Runnable{
                             //Long id, String type, String text, String date, String blog_name, List<String> tags
                             TumblrPost p = new TumblrPost(item.getId(), item.getType(), text.trim(), item.getDateGMT(),
                                     item.getBlogName(), tags);
-                            fw.writeSingleLine(gson.toJson(p));
-                            System.out.println(text);
+                            //fw.writeSingleLine(gson.toJson(p));
+
+                            /**********if the post contains any given keyword**********/
+                            if(filterPost(text, tags)){
+                                fw1.writeSingleLine(gson.toJson(p));
+                            }
+                            //System.out.println(text);
                         }
 
                         //System.out.println("["+i+"]"+tPost.getBlogName()+": "+tPost.getBody().trim());
@@ -124,8 +156,11 @@ public class RequestTaggedPostTask implements Runnable{
                             //Long id, String type, String text, String date, String blog_name, List<String> tags
                             TumblrPost p1 = new TumblrPost(item.getId(), item.getType(), text1, item.getDateGMT(),
                                     item.getBlogName(), tags1);
-                            fw.writeSingleLine(gson.toJson(p1));
-                            System.out.println(text1);
+                            //fw.writeSingleLine(gson.toJson(p1));
+                            if(filterPost(text1, tags1)){
+                                fw1.writeSingleLine(gson.toJson(p1));
+                            }
+                            //System.out.println(text1);
                         }
                         //System.out.println("["+i+"]"+pPost.getBlogName()+": "+pPost.getCaption().trim());
                         //System.out.println(pPost.toString()+"  "+item.getDateGMT());
@@ -139,8 +174,13 @@ public class RequestTaggedPostTask implements Runnable{
                             //Long id, String type, String text, String date, String blog_name, List<String> tags
                             TumblrPost p2 = new TumblrPost(item.getId(), item.getType(), text2.trim(), item.getDateGMT(),
                                     item.getBlogName(), tags2);
-                            fw.writeSingleLine(gson.toJson(p2));
-                            System.out.println(text2);
+                            //fw.writeSingleLine(gson.toJson(p2));
+
+                            if(filterPost(text2, tags2)){
+                                fw1.writeSingleLine(gson.toJson(p2));
+                            }
+
+                            //System.out.println(text2);
                         }
                         //System.out.println("["+i+"]"+qPost.getBlogName()+": "+qPost.getText().trim()+" Source: "+qPost.getSource());
                         //System.out.println(qPost.toString()+"  "+item.getDateGMT());
@@ -154,8 +194,12 @@ public class RequestTaggedPostTask implements Runnable{
                             //Long id, String type, String text, String date, String blog_name, List<String> tags
                             TumblrPost p3 = new TumblrPost(item.getId(), item.getType(), text3.trim(), item.getDateGMT(),
                                     item.getBlogName(), tags3);
-                            fw.writeSingleLine(gson.toJson(p3));
-                            System.out.println(text3);
+                            //fw.writeSingleLine(gson.toJson(p3));
+
+                            if(filterPost(text3, tags3)){
+                                fw1.writeSingleLine(gson.toJson(p3));
+                            }
+                            //System.out.println(text3);
                         }
                         //System.out.println("["+i+"]"+lPost.getBlogName()+": "+lPost.getTitle()+ "Description: "+lPost.getDescription().trim());
                         //System.out.println(lPost.toString()+"  "+item.getDateGMT());
@@ -169,8 +213,13 @@ public class RequestTaggedPostTask implements Runnable{
                             //Long id, String type, String text, String date, String blog_name, List<String> tags
                             TumblrPost p4 = new TumblrPost(item.getId(), item.getType(), text4.trim(), item.getDateGMT(),
                                     item.getBlogName(), tags4);
-                            fw.writeSingleLine(gson.toJson(p4));
-                            System.out.println(text4);
+                            //fw.writeSingleLine(gson.toJson(p4));
+
+                            if(filterPost(text4, tags4)){
+                                fw1.writeSingleLine(gson.toJson(p4));
+                            }
+
+                            //System.out.println(text4);
                         }
                         //System.out.println("["+i+"]"+cPost.getBlogName()+": "+cPost.getBody().trim());
                         //System.out.println(cPost.toString()+"  "+item.getDateGMT());
@@ -183,8 +232,13 @@ public class RequestTaggedPostTask implements Runnable{
                             //Long id, String type, String text, String date, String blog_name, List<String> tags
                             TumblrPost p5 = new TumblrPost(item.getId(), item.getType(), text5.trim(), item.getDateGMT(),
                                     item.getBlogName(), tags5);
-                            fw.writeSingleLine(gson.toJson(p5));
-                            System.out.println(text5);
+                            //fw.writeSingleLine(gson.toJson(p5));
+
+                            if(filterPost(text5, tags5)){
+                                fw1.writeSingleLine(gson.toJson(p5));
+                            }
+
+                            //System.out.println(text5);
                         }
                         //System.out.println("["+i+"]"+aPost.getBlogName()+": "+aPost.getAlbumName()+"-"+aPost.getArtistName()
                         //+": "+aPost.getCaption().trim());
@@ -198,8 +252,12 @@ public class RequestTaggedPostTask implements Runnable{
                             //Long id, String type, String text, String date, String blog_name, List<String> tags
                             TumblrPost p6 = new TumblrPost(item.getId(), item.getType(), text6, item.getDateGMT(),
                                     item.getBlogName(), tags6);
-                            fw.writeSingleLine(gson.toJson(p6));
-                            System.out.println(text6);
+                            //fw.writeSingleLine(gson.toJson(p6));
+                            if(filterPost(text6, tags6)){
+                                fw1.writeSingleLine(gson.toJson(p6));
+                            }
+
+                            //System.out.println(text6);
                         }
                         //System.out.println("["+i+"]"+vPost.getBlogName()+": "+vPost.getCaption().trim());
                         //System.out.println(vPost.toString()+"  "+item.getDateGMT());
@@ -212,8 +270,11 @@ public class RequestTaggedPostTask implements Runnable{
                             List<String> tags7 = item.getTags();
                             TumblrPost p7 = new TumblrPost(item.getId(), item.getType(), text7.trim(), item.getDateGMT(),
                                     item.getBlogName(), tags7);
-                            fw.writeSingleLine(gson.toJson(p7));
-                            System.out.println(text7);
+                            //fw.writeSingleLine(gson.toJson(p7));
+                            if(filterPost(text7, tags7)){
+                                fw1.writeSingleLine(gson.toJson(p7));
+                            }
+                            //System.out.println(text7);
                         }
                         //System.out.println("["+i+"]"+ansPost.getBlogName()+": "+ansPost.getQuestion().trim()+"Answer: "+ansPost.getAnswer().trim());
                         //System.out.println(ansPost.toString()+"  "+item.getDateGMT());
@@ -225,5 +286,36 @@ public class RequestTaggedPostTask implements Runnable{
 
         }
         return posts;
+    }
+
+    private boolean filterPost(String text, List<String> tags) {
+        boolean flag = false;
+        for(String kw:keywords){
+            kw = kw.replaceAll("_", " ");
+            if(!tags.isEmpty()){
+                if(text.toLowerCase().contains(kw)||tags.contains(kw)){
+                    flag = true;
+                    break;
+                }
+            } else {
+                if(text.toLowerCase().contains(kw)){
+                    flag = true;
+                    break;
+                }
+            }
+
+        }
+        return flag;
+
+    }
+
+    public void setKeywords(String[] keywords) {
+        this.keywords = keywords;
+    }
+
+    public String showKeywords() {
+        return "RequestTaggedPostTask{" +
+                "keywords=" + Arrays.toString(this.keywords) +
+                '}';
     }
 }
